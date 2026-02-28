@@ -1255,21 +1255,31 @@ function AskGuide({ region, onClose }) {
     setLoading(true);
     try {
       const apiMsgs = newMsgs.map(m=>({role:m.role==="assistant"?"assistant":"user",content:m.text}));
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-    "anthropic-version": "2023-06-01",
-    "anthropic-dangerous-allow-browser": "true",
-  },
+      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+      if (!apiKey) {
+        setMsgs(prev=>[...prev,{role:"assistant",text:"⚠️ API key not configured. Add VITE_ANTHROPIC_API_KEY in Vercel → Settings → Environment Variables, then redeploy."}]);
+        setLoading(false); return;
+      }
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "x-api-key": apiKey,
+          "anthropic-version":"2023-06-01",
+          "anthropic-dangerous-allow-browser":"true",
+        },
         body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:systemPrompt,messages:apiMsgs})
       });
       const data = await res.json();
+      if (!res.ok) {
+        const errMsg = data?.error?.message || `Error ${res.status}`;
+        setMsgs(prev=>[...prev,{role:"assistant",text:`⚠️ API error: ${errMsg}`}]);
+        setLoading(false); return;
+      }
       const reply = data.content?.map(b=>b.text||"").join("") || "Sorry, could not reach the guide right now.";
       setMsgs(prev=>[...prev,{role:"assistant",text:reply}]);
     } catch(e) {
-      setMsgs(prev=>[...prev,{role:"assistant",text:"Connection issue. Try again in a moment."}]);
+      setMsgs(prev=>[...prev,{role:"assistant",text:`⚠️ Connection error: ${e.message}`}]);
     }
     setLoading(false);
   };
@@ -1689,7 +1699,7 @@ function QuestDetail({ quest, onClose, onAccepted }) {
   const pct = Math.round((quest.completions/quest.attempts)*100);
   const grads = {legendary:"#4c1d95,#831843",epic:"#78350f,#451a03",stewardship:"#14532d,#052e16",rare:"#1e3a5f,#0c2544",common:"#14532d,#052e16"};
   return (
-    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
+    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
       <div style={{background:`linear-gradient(135deg,${grads[quest.rarity]||grads.common})`,padding:"50px 20px 26px"}}>
         <button onClick={onClose} style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,0.3)",border:"none",borderRadius:20,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={18} color="#fff"/></button>
         <RarityBadge rarity={quest.rarity}/>
@@ -1720,7 +1730,7 @@ function QuestDetail({ quest, onClose, onAccepted }) {
 // ─── FOLKLORE DETAIL ──────────────────────────────────────────────────────────
 function FolkloreDetail({ f, onClose }) {
   return (
-    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0a0808",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
+    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0a0808",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
       <div style={{background:"linear-gradient(135deg,#1a0a0a,#2d0a0a)",padding:"56px 20px 24px",borderBottom:"1px solid rgba(239,68,68,0.18)"}}>
         <button onClick={onClose} style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,0.5)",border:"none",borderRadius:20,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={18} color="#fff"/></button>
         <SourceBadge source={f.source}/>
@@ -1757,7 +1767,7 @@ function RouteDetail({ route, region, onClose }) {
   });
   const diffColor = route.diff==="Easy"?"#4ade80":route.diff==="Medium"?"#fbbf24":"#f87171";
   return (
-    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
+    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
       <div style={{background:"linear-gradient(135deg,#1e3a5f,#0c2544)",padding:"52px 20px 24px"}}>
         <button onClick={onClose} style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,0.3)",border:"none",borderRadius:20,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={18} color="#fff"/></button>
         <span style={{fontSize:11,color:"rgba(96,165,250,0.7)",fontWeight:700,letterSpacing:1}}>{route.type.toUpperCase()}</span>
@@ -1835,7 +1845,7 @@ function MoodFinder({ region, onClose }) {
   const folkResults = mood?.folklore ? region.folklore.slice(0,3) : [];
   const stewResults = mood?.stewardship ? region.spots.flatMap(s=>(s.quests||[]).filter(q=>q.rarity==="stewardship").map(q=>({...q,spotName:s.name,spotEmoji:s.emoji}))).slice(0,3) : [];
   return (
-    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
+    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
       <div style={{background:"linear-gradient(135deg,#0d1117,#1a1f35)",padding:"52px 20px 20px"}}>
         <button onClick={onClose} style={{position:"absolute",top:16,right:16,background:"rgba(255,255,255,0.05)",border:"none",borderRadius:20,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={16} color="#6b7280"/></button>
         <div style={{fontSize:11,color:"#6b7280",letterSpacing:2,fontWeight:700,marginBottom:5}}>{step===3?"YOUR SPOTS":`STEP ${step} OF 2`}</div>
@@ -1948,7 +1958,7 @@ function ContentTab({ region, onContent }) {
 function ContentDetail({ content, onClose }) {
   if (!content) return null;
   return (
-    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
+    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
       <div style={{background:"linear-gradient(135deg,#1a2035,#0d1117)",padding:"56px 20px 24px",borderBottom:"1px solid rgba(255,255,255,0.05)"}}>
         <button onClick={onClose} style={{position:"absolute",top:16,left:16,background:"rgba(255,255,255,0.05)",border:"none",borderRadius:20,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={16} color="#6b7280"/></button>
         <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}><ContentTypeBadge type={content.type}/><SourceBadge source={content.source}/></div>
@@ -2019,7 +2029,7 @@ function AdventureTab({ region }) {
 function CommunityOverlay({ onClose }) {
   const [tab, setTab] = useState("feed");
   return (
-    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
+    <div className="fade-in" style={{position:"absolute",inset:0,zIndex:500,background:"#0d1117",overflowY:"scroll",WebkitOverflowScrolling:"touch",touchAction:"pan-y"}}>
       <div style={{background:"linear-gradient(135deg,#1a2035,#0d1117)",padding:"52px 20px 16px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
         <button onClick={onClose} style={{position:"absolute",top:16,left:16,background:"rgba(255,255,255,0.05)",border:"none",borderRadius:20,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><X size={18} color="#6b7280"/></button>
         <h1 style={{fontFamily:"'Fredoka',sans-serif",fontSize:22,color:"#fff",marginBottom:12}}>👥 Community</h1>
