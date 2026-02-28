@@ -1255,19 +1255,9 @@ function AskGuide({ region, onClose }) {
     setLoading(true);
     try {
       const apiMsgs = newMsgs.map(m=>({role:m.role==="assistant"?"assistant":"user",content:m.text}));
-      const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-      if (!apiKey) {
-        setMsgs(prev=>[...prev,{role:"assistant",text:"⚠️ API key not configured. Add VITE_ANTHROPIC_API_KEY in Vercel → Settings → Environment Variables, then redeploy."}]);
-        setLoading(false); return;
-      }
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
+      const res = await fetch("/api/guide",{
         method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "x-api-key": apiKey,
-          "anthropic-version":"2023-06-01",
-          "anthropic-dangerous-allow-browser":"true",
-        },
+        headers:{"Content-Type":"application/json"},
         body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,system:systemPrompt,messages:apiMsgs})
       });
       const data = await res.json();
