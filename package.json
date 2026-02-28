@@ -12,3 +12,8 @@ package.json
     "react-dom": "^18.3.1",
     "lucide-react": "^0.263.1"
   },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}
